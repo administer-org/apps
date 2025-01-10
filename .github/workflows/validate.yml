@@ -13,8 +13,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
+    defaults:
+        - working-directory: ./src/push-tools
     steps:
       - name: Checkout
         uses: actions/checkout@v4

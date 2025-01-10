@@ -15,7 +15,7 @@
     "noEmit": true,
 
     // Best practices
-    "strict": false, // go away stricttyping
+    "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
 

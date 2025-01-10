@@ -1,24 +1,20 @@
 // pyxfluff 2025
 
 import { execSync } from "child_process";
-import { existsSync, lstatSync } from "fs";
-import { resolve } from "path";
+import { resolve, sep } from "path";
 
-function getModifications(
-    basePath: string
-): string[] {
+function getModifications(basePath: string): string[] {
     try {
         const modifiedFolders = new Set<string>();
 
-        execSync("git diff --name-only HEAD~1 HEAD", { encoding: "utf-8" }).split("\n").filter(Boolean).forEach((file) => {
-            if (resolve(file).startsWith(resolve(basePath))) {
-                const folderPath = resolve(file).split("/").slice(0, -1).join("/");
-
-                if (!modifiedFolders.has(folderPath) && existsSync(folderPath) && lstatSync(folderPath).isDirectory()) {
-                    modifiedFolders.add(folderPath);
+        execSync("git diff --name-only HEAD~1 HEAD", { encoding: "utf-8" })
+            .split("\n")
+            .filter(Boolean)
+            .forEach((file) => {
+                if (resolve(file).startsWith(resolve(basePath))) {
+                    modifiedFolders.add(resolve(basePath, resolve(file).replace(resolve(basePath) + sep, "").split(sep)[0]));
                 }
-            }
-        });
+            });
 
         return Array.from(modifiedFolders);
     } catch (error) {
@@ -27,4 +23,5 @@ function getModifications(
     }
 }
 
-console.log(getModifications("../apps"));
+
+console.log(getModifications("src/apps"));

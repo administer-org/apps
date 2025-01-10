@@ -1,9 +1,11 @@
 // pyxfluff 2025
 
 import { execSync } from "child_process";
-import { resolve, sep } from "path";
+import { relative, resolve, sep } from "path";
 
-function getModifications(basePath: string): string[] {
+function getModifications(
+    basePath: string
+): string[] {
     try {
         const modifiedFolders = new Set<string>();
 
@@ -11,8 +13,9 @@ function getModifications(basePath: string): string[] {
             .split("\n")
             .filter(Boolean)
             .forEach((file) => {
-                if (resolve(file).startsWith(resolve(basePath))) {
-                    modifiedFolders.add(resolve(basePath, resolve(file).replace(resolve(basePath) + sep, "").split(sep)[0]));
+                const absolutePath = resolve(file);
+                if (absolutePath.startsWith(resolve(basePath))) {
+                    modifiedFolders.add(`${basePath}/${relative(resolve(basePath), absolutePath).split(sep)[0]}`.replace(/\\/g, "/")); // Normalize path
                 }
             });
 
@@ -22,6 +25,5 @@ function getModifications(basePath: string): string[] {
         process.exit(1);
     }
 }
-
 
 console.log(getModifications("src/apps"));

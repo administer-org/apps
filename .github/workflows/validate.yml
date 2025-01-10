@@ -31,4 +31,4 @@ jobs:
         run: bun i
 
       - name: Validate new app
-        run: bun run src/push-tools/index.ts validate
+        run: bun run index.ts

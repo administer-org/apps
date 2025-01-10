@@ -1,0 +1,28 @@
+name: Validate the state of an Administer app.
+on:
+    push:
+        branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: bun i
+
+      - name: Validate new app
+        run: bun run src/push-tools/index.ts validate

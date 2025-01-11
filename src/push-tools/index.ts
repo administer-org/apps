@@ -64,7 +64,7 @@ function processModifications(modifiedFolders: string[]) {
 
             if (existingConfig.uploadToAppServer && process.argv.slice(2).includes("--git-enabled")) {
                 unlinkSync(join(folderPath, "app_server_config.json"));
-                execSync("git add . && git commit -m \"Delete successfully processed App Server config\" && git push")
+                //execSync("git add . && git commit -m \"Delete successfully processed App Server config\" && git push")
             }
             
             return [existingConfig.uploadToAppServer, !existingConfig.uploadToAppServer, "Please read the log for more information."];

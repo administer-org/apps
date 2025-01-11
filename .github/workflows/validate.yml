@@ -33,3 +33,13 @@ jobs:
 
       - name: Validate new app
         run: bun run index.ts --git-enabled
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -a -m "App push cleanup"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: main

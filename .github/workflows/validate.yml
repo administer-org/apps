@@ -1,4 +1,4 @@
-name: Validate the state of an Administer app.
+name: Administer App validation
 on:
     push:
         branches: [main]
@@ -32,7 +32,7 @@ jobs:
         run: bun i
 
       - name: Validate new app
-        run: bun run index.ts --git-enabled
+        run: bun run index.ts --git-enabled --${{ secrets.ADMINISTER_TOKEN }}
 
       - name: Commit changes
         run: |

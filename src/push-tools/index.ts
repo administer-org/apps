@@ -1,7 +1,6 @@
 // pyxfluff 2025
 
 import { join } from "path";
-import { request } from "http"
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { relative, resolve, sep } from "path";
@@ -69,7 +68,7 @@ function processModifications(modifiedFolders: string[]) {
                     return;
                 }
 
-                request("https://administer.notpyx.me/app-config/upload", {
+                fetch("https://administer.notpyx.me/app-config/upload", {
                     method: "POST",
                     headers: {
                         "X-Adm-Auth": process.argv.slice(2)[1],

@@ -64,7 +64,7 @@ function processModifications(modifiedFolders: string[]) {
             enableGitPush(existingConfig.uploadToAppServer, existingConfig)
 
             if (existingConfig.uploadToAppServer && process.argv.slice(2).includes("--git-enabled")) {
-                if (!process.argv.slice(2)[1].startsWith("ADM-_TOK-_")) {
+                if (!process.argv.slice(2)[1].startsWith("--ADM-_TOK-_")) {
                     console.error("Authentication token not passed through (or git flag missing); please make sure both are enabled!");
                     return;
                 }
@@ -72,7 +72,8 @@ function processModifications(modifiedFolders: string[]) {
                 request("https://administer.notpyx.me/app-config/upload", {
                     method: "POST",
                     headers: {
-                        "X-Adm-Auth": process.argv.slice(2)[1]
+                        "X-Adm-Auth": process.argv.slice(2)[1],
+                        "User-Agent": "Administer System (1.0) (App Validator; TypeScript; GitHub Actions)"
                     }
                 });
 

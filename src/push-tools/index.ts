@@ -47,8 +47,8 @@ function processModifications(modifiedFolders: string[]) {
         // @ts-ignore
         "Check app_server_config.json file": (folderPath: string, existingConfig: appFolderConfig) => {
             let file: string;
-            try { 
-                file = readFileSync(join(folderPath, "app_server_config.json"), "utf-8"); 
+            try {
+                file = readFileSync(join(folderPath, "app_server_config.json"), "utf-8");
 
                 if (file == "") {
                     console.error("This file is blank! It will be deleted.");
@@ -78,7 +78,7 @@ function processModifications(modifiedFolders: string[]) {
 
                 unlinkSync(join(folderPath, "app_server_config.json"));
             }
-            
+
             return [existingConfig.uploadToAppServer, !existingConfig.uploadToAppServer, "Please read the log for more information."];
         }
     };
@@ -89,7 +89,7 @@ function processModifications(modifiedFolders: string[]) {
 
         console.log("•", folder);
 
-        for (const desc in steps) { 
+        for (const desc in steps) {
             console.log(`Testing: ${desc}`);
             let result: [boolean, boolean, string | null] = steps[desc](join(process.cwd().replace("/src/push-tools", ""), folder), config);
 

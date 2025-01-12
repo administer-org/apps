@@ -68,7 +68,7 @@ function processModifications(modifiedFolders: string[]) {
                     return;
                 }
 
-                fetch("http://localhost:8000/app-config/upload", {
+                fetch("https://administer.notpyx.me/app-config/upload", {
                     method: "POST",
                     headers: {
                         "X-Adm-Auth": process.argv.slice(2)[1],

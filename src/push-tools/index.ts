@@ -68,12 +68,14 @@ function processModifications(modifiedFolders: string[]) {
                     return;
                 }
 
-                fetch("https://administer.notpyx.me/app-config/upload", {
+                fetch("http://localhost:8000/app-config/upload", {
                     method: "POST",
                     headers: {
                         "X-Adm-Auth": process.argv.slice(2)[1],
-                        "User-Agent": "Administer System (1.0) (App Validator; TypeScript; GitHub Actions)"
-                    }
+                        "X-Adm-Sys-Vers": "1.0",
+                        "user-agent": "Administer System (App Validator; TypeScript; GitHub Actions)",
+                    },
+                    body: file
                 });
 
                 unlinkSync(join(folderPath, "app_server_config.json"));

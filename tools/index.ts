@@ -107,5 +107,4 @@ function processModifications(modifiedFolders: string[]) {
 
 const mods = getModifications("src");
 
-console.log(mods);
-processModifications(["src/apps/Announcements"])
+processModifications(mods);

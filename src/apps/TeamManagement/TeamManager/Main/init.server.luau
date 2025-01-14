@@ -10,7 +10,6 @@ local DataStoreService = game:GetService("DataStoreService")
 local DataStore = DataStoreService:GetDataStore("Administer_TeamSaves")
 local SecondaryDataStore = DataStoreService:GetDataStore("Administer_TeamSaves_2")
 
-
 --[[
 TeamSaveTable: {
 	["teamInfo"] = {name, color, autoAssignable},
@@ -19,7 +18,7 @@ TeamSaveTable: {
 }
 ]]
 
-local function ProcessAction(action, data: {[string]: any})
+local function ProcessAction(action, data: { [string]: any })
 	if action == "GetAllTeams" then
 		return TeamManager.GetAllTeams()
 	elseif action == "CreateTeam" then
@@ -49,13 +48,11 @@ local function ProcessAction(action, data: {[string]: any})
 		return data.player:IsInGroup(data.groupId)
 	elseif action == "Load" then
 		local teamInfo = DataStore:GetAsync(data.key) -- TeamSaveTable
-		if teamInfo then
-			return HttpService:JSONDecode(teamInfo)
-		end
+		if teamInfo then return HttpService:JSONDecode(teamInfo) end
 	elseif action == "Save" then
 		local encodedData = HttpService:JSONEncode(data.data)
 		local success, err = pcall(function()
-			DataStore:SetAsync(data.key, encodedData)  -- TeamSaveTable
+			DataStore:SetAsync(data.key, encodedData) -- TeamSaveTable
 		end)
 		if not success then
 			warn("Failed to save team data: " .. err)
@@ -74,9 +71,7 @@ local function ProcessAction(action, data: {[string]: any})
 		else
 			currentSavedTeams = HttpService:JSONDecode(currentSavedTeams)
 		end
-		if not table.find(currentSavedTeams, data.key) then
-			table.insert(currentSavedTeams, data.key)
-		end
+		if not table.find(currentSavedTeams, data.key) then table.insert(currentSavedTeams, data.key) end
 		local successSecondarySave, errSecondarySave = pcall(function()
 			SecondaryDataStore:SetAsync("SavedTeams", HttpService:JSONEncode(currentSavedTeams))
 		end)
@@ -103,29 +98,24 @@ local function ProcessAction(action, data: {[string]: any})
 		end
 	elseif action == "GetGroupInfo" then
 		local groupInfo = groupService:GetGroupInfoAsync(data.groupId)
-		return {["name"] = groupInfo.Name, ["imageId"] = groupInfo.EmblemUrl}
-		else
+		return { ["name"] = groupInfo.Name, ["imageId"] = groupInfo.EmblemUrl }
+	else
 		warn("Invalid Action: " .. tostring(action))
 		return nil
 	end
 end
 
-
-local function OnServerInvoke(player: Player, data: {["action"]: string, ["data"]: any})
+local function OnServerInvoke(player: Player, data: { ["action"]: string, ["data"]: any })
 	local action = ProcessAction(data.action, data.data)
 	local RemoteEvent = game.ReplicatedStorage:WaitForChild("AdministerApps")["Team Manager"].TeamRemote
 	return action
 end
 
-local App = Runner.Build(
-	function(Config, AppAPI)
-		AppAPI.NewRemoteFunction("TeamRemote", OnServerInvoke)
-	end,
-	{},
-	{
-		Icon = "rbxassetid://9368579295",
-		Name = "Team Manager",
-		Frame = script.Parent.UI.TeamManagement,
-		Tip = "Manage your game's teams."
-	}
-)
+local App = Runner.Build(function(Config, AppAPI)
+	AppAPI.NewRemoteFunction("TeamRemote", OnServerInvoke)
+end, {}, {
+	Icon = "rbxassetid://9368579295",
+	Name = "Team Manager",
+	Frame = script.Parent.UI.TeamManagement,
+	Tip = "Manage your game's teams.",
+})

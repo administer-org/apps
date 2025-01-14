@@ -5,10 +5,10 @@ return {
 
 	Init = function()
 		return {
-			LocalTitle = "Team Manager", 
-			LocalDesc  = "Manage your game's teams.", 
+			LocalTitle = "Team Manager",
+			LocalDesc = "Manage your game's teams.",
 			AppVersion = "v1",
-			AppContent = script.TeamManager
+			AppContent = script.TeamManager,
 		}
 	end,
 }

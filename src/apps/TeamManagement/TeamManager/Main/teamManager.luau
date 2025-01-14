@@ -1,7 +1,7 @@
 local TeamManager = {}
 local teams = game:GetService("Teams")
 
-function TeamManager.GetAllTeams(): {Team}
+function TeamManager.GetAllTeams(): { Team }
 	return teams:GetChildren()
 end
 
@@ -14,13 +14,11 @@ function TeamManager.CreateTeam(name: string, color: BrickColor, autoAssignable:
 	return team
 end
 
-function TeamManager.GetPlayersInTeam(team: Team): {Player}
+function TeamManager.GetPlayersInTeam(team: Team): { Player }
 	local playersInTeam = {}
 
 	for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-		if player.Team == team then
-			table.insert(playersInTeam, player)
-		end
+		if player.Team == team then table.insert(playersInTeam, player) end
 	end
 
 	return playersInTeam

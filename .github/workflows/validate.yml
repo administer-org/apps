@@ -34,7 +34,7 @@ jobs:
       - name: Validate new app
         run: bun run ./tools/index.ts --git-enabled --${{ secrets.ADMINISTER_TOKEN }}
 
-      - name: Check for changes
+      - name: Change and commit automated changes 
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes to commit."

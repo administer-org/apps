@@ -7,3 +7,7 @@ sourcemap.json
 
 # For ROJO sync until the VSC extension works with pesde...
 aftman.toml
+
+node_modules
+package.json
+bun.lockb

@@ -29,10 +29,10 @@ jobs:
         uses: oven-sh/setup-bun@v1
 
       - name: Install dependencies
-        run: bun i
+        run: bun i ./tools
 
       - name: Validate new app
-        run: bun run index.ts --git-enabled --${{ secrets.ADMINISTER_TOKEN }}
+        run: bun run ./tools/index.ts --git-enabled --${{ secrets.ADMINISTER_TOKEN }}
 
       - name: Check for changes
         run: |

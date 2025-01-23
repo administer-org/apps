@@ -34,12 +34,20 @@ jobs:
       - name: Validate new app
         run: bun run index.ts --git-enabled --${{ secrets.ADMINISTER_TOKEN }}
 
+      - name: Check for changes
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit."
+            exit 0
+          fi
+      - name: Configure Git
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Commit changes
         run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git commit -a -m "App push cleanup"
+          git add .
+          git commit -m "Cleanup after app validation"
       - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          branch: main
+        run: |
+          git push

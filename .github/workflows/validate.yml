@@ -39,15 +39,12 @@ jobs:
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes to commit."
             exit 0
+          else
+            git config --local user.name "github-actions[bot]"
+            git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            git add .
+            git commit -m "Cleanup after app validation"
+
+            git push
           fi
-      - name: Configure Git
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Commit changes
-        run: |
-          git add .
-          git commit -m "Cleanup after app validation"
-      - name: Push changes
-        run: |
-          git push

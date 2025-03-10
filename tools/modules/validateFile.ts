@@ -5,8 +5,8 @@ export function validateAppServerConfig(contents: string): boolean {
             UpdatedAt: number,
             AppAPIPreferredVersion: number,
             AppVersion: number,
-            IsOld: number,
             AdministerID: number,
+            AssetType: "theme" | "app" | "iconpack"
         },
 
         Developer: {
@@ -36,9 +36,9 @@ export function validateAppServerConfig(contents: string): boolean {
     const parsed: AppServerConfig = JSON.parse(contents);
 
     const expected: (keyof AppServerConfig | keyof AppServerConfig['Metadata'] | keyof AppServerConfig['Developer'] | keyof AppServerConfig['Votes'])[] = [
-        'Metadata', 'Developer', 'Votes', 'Name', 'Title', 'DownloadCount', 'AppVersion', 'IconID', 'BlurredIcon', 'ShortDescription', 'LongDescription', 'InstallID', 'Type', 'Tags',
+        'Metadata', 'Developer', 'Name', 'Title', 'DownloadCount', 'AppVersion', 'IconID', 'BlurredIcon', 'ShortDescription', 'LongDescription', 'InstallID', 'Type', 'Tags',
         'GeneratedAt', 'UpdatedAt', 'AppAPIPreferredVersion', 'IsOld', 'AdministerID',
-        'Name', 'ID', 'Dislikes', 'Likes', 'Score', 'Favorites'
+        'Name', 'ID'
     ];
 
     let result: boolean = Object.keys(parsed).some(key => {

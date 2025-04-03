@@ -1,7 +1,7 @@
 name = "administer/apps"
 version = "0.1.0"
 description = "Administer's official and 3rd party apps."
-authors = ["FloofyPlasma", "pyxfluff"]
+authors = ["pyxfluff <git@pyxfluff.dev>", "Administer Team"]
 repository = "https://github.com/administer-org/apps"
 license = "AGPL-3.0"
 

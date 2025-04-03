@@ -1,11 +1,21 @@
 {
-  "name": "administer-apps-validate",
-  "module": "index.ts",
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "type": "module"
+    "name": "administer-apps-validate",
+    "description": "A script which validates and publishes new Administer apps.",
+
+    "author": {
+        "name": "pyxfluff",
+        "email": "git@pyxfluff.dev"
+    },
+
+    "module": "index.ts",
+
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+
+    "peerDependencies": {
+        "typescript": "^5.0.0"
+    },
+    
+    "type": "module"
 }

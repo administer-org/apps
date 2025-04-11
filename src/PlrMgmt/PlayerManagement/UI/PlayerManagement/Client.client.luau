@@ -1,21 +1,26 @@
 --// pyxfluff 2024 - 2025
 
-local Remotes = game.ReplicatedStorage:WaitForChild("Administer").Apps.PlayerManagement
+local AdmRemotes = game.ReplicatedStorage:WaitForChild("Administer")
+local Remotes = AdmRemotes:WaitForChild("Apps"):WaitForChild("PlayerManagement")
 
 local PausePolling = false
 local PollInterval = 10
+local IsVerbose = true
 local Connections = {}
 local PlayerCache = {}
 
 local MainFrame = script.Parent
-local Box = script.Parent.ServerDir.ServerLookup
+
+local ServerDir = script.Parent.ServerDir
+local Box = ServerDir.ServerLookup
 local PlayerFrame = MainFrame.Player 
 
-local AdministerClient = game.Players.LocalPlayer.PlayerGui.AdministerMainPanel.Client
+local AdministerClient = game.Players.LocalPlayer.PlayerGui:FindFirstChild("AdministerMainPanel", true).Client
 
 local Shimmer = require(AdministerClient.Libraries.Shime)
 local AdmAppAPI = require(AdministerClient.Modules.Apps)
 local Utilities = require(AdministerClient.Modules.Utilities)
+local Frontend = require(AdministerClient.Modules.Frontend)
 
 local function FormatTime(Seconds, Full, _)
 	local Days = math.floor(Seconds / 86400)
@@ -50,6 +55,8 @@ local function CachePlayer(
 ): { Id: string, DisplayName: string, Username: string, HasVerifiedBadge: boolean, Photo: string<RBXAsset> }
 	local PlayerData = PlayerCache[ID]
 
+	Verbose = IsVerbose
+
 	if not PlayerData then
 		repeat
 			local Suc, Content = pcall(function()
@@ -57,7 +64,7 @@ local function CachePlayer(
 			end)
 
 			if not Suc then
-				if Verbose then print("We appear to be ratelimited, trying again soon.") end
+				if Verbose then print("We appear to be ratelimited, trying again soon.", Content) end
 				if ReturnPlaceholderOnFail then
 					return {
 						Id = ID,
@@ -88,6 +95,7 @@ task.spawn(function()
 	local List = Remotes.ServerComm:InvokeServer("RequestServers")
 
 	for i, s in List do
+		print(s)
 		for _i, p in s[2]["P"] do
 			CachePlayer(p, false, false)
 		end
@@ -101,20 +109,8 @@ local function LoadPlayer(
 ): nil
 	for i, conn in Connections do conn:Disconnect() end
 	Connections = {}
-	
-	for i, c in PlayerFrame.ModerationHistory.ActionList:GetChildren() do
-		if c:IsA("Frame") and c.Name ~= "Log" then
-			c:Destroy() 
-		end
-	end
 
-	for i, c in PlayerFrame.ChatLogs.ActionList:GetChildren() do
-		if c:IsA("Frame") and c.Name ~= "Log" then
-			c:Destroy() 
-		end
-	end
-
-	for i, c in PlayerFrame.AuditLogs.ActionList:GetChildren() do
+	for i, c in PlayerFrame.Logs.ActionList:GetChildren() do
 		if c:IsA("Frame") and c.Name ~= "Log" then
 			c:Destroy() 
 		end
@@ -132,7 +128,7 @@ local function LoadPlayer(
 	Box.Visible = false
 	MainFrame.ServerDir.Visible = false
 
-	for i, Frame in {PlayerFrame.PlayerImage, PlayerFrame.AuditLogs, PlayerFrame.ChatLogs, PlayerFrame.ModerationHistory, PlayerFrame.PlayerUN, PlayerFrame.PlayerDN, PlayerFrame.Stats, PlayerFrame.QuickActions} do
+	for i, Frame in {PlayerFrame.PlayerImage, PlayerFrame.Logs, PlayerFrame.PlayerUN, PlayerFrame.PlayerDN, PlayerFrame.Stats} do
 		Shimmers[Frame.Name] = Shimmer.new(Frame)
 
 		Shimmers[Frame.Name]:Play()
@@ -145,25 +141,26 @@ local function LoadPlayer(
 	local PlayerBasic = CachePlayer(PlayerID, false, false)
 	local PlayerFull = Remotes.ServerComm:InvokeServer("RequestPlayerJSON", PlayerID)
 	local PromColor = game.ReplicatedStorage.Administer.GetProminentColorFromUserID:InvokeServer(PlayerID)
-	
+
 	PlayerFrame.PlayerDN.Text = PlayerBasic["DisplayName"]
-	PlayerFrame.PlayerUN.Text = `{PlayerBasic["Username"]} · {PlayerBasic["Id"]}`
+	PlayerFrame.PlayerUN.Text = `@{PlayerBasic["Username"]}`
 	PlayerFrame.ImageLabel.ImageColor3 = Color3.fromRGB(PromColor[1], PromColor[2], PromColor[3])
 	PlayerFrame.PlayerImage.Image = PlayerBasic["Photo"]
 
 	if PlayerFull["Main"]["IsActive"] then
-		PlayerFrame.PlayerImage.UIStroke.Enabled = true
 		PlayerFrame.PlayerStatusIcon.BackgroundColor3 = Color3.fromRGB(20, 255, 114)
+		PlayerFrame.PlayStatus.Text = `Playing for {FormatTime(PlayerFull["Main"]["LastSeen"] - AdmRemotes.GetSystemClock:InvokeServer())}`
 	else
-		PlayerFrame.PlayerImage.UIStroke.Enabled = false
-		PlayerFrame.PlayerStatusIcon.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+		PlayerFrame.PlayerStatusIcon.BackgroundColor3 = Color3.fromRGB(30, 32, 36)
+		PlayerFrame.PlayStatus.Text = `Offline`
 	end
 
 	local Stats = PlayerFrame.Stats.ActionList
-	
+
 	print(PlayerFull["Main"])
-	
+
 	if PlayerFull["Main"]["LastSeen"] == 0 then
+		--// TODO
 		Stats.Stat_FirstSeen.Desc.Text = "First seen: never"
 		Stats.Stat_LastSeen.Desc.Text = "Last seen: never"
 		Stats.Stat_PlayTime.Desc.Text = "Playtime: 0 minutes"
@@ -172,27 +169,32 @@ local function LoadPlayer(
 		Stats.Stat_Warnings.Icon.ImageColor3 = (PlayerFull["Main"]["ModRecords"]["_Warnings"] >= 2 and Color3.fromRGB(187,189, 49) or Color3.new(1,1,1))
 		Stats.Stat_IsAdmin.Desc.Text = `<font color=\"{PlayerFull["Admin"]["IsAdmin"] and "rgb(255,0,0)" or "rgb(255,255,255)"}\">User is not protected</font>`
 	else
-		Stats.Stat_FirstSeen.Desc.Text = `First seen: {Utilities.FormatRelativeTime(PlayerFull["Main"]["FirstSeen"])}`
-		Stats.Stat_LastSeen.Desc.Text = `Last seen: {PlayerFull["Main"]["IsActive"] and "<font color=\"rgb(0,255,0)\">now</font>" or Utilities.FormatRelativeTime(PlayerFull["Main"]["LastSeen"])}`
-		Stats.Stat_PlayTime.Desc.Text = `Playtime: {FormatTime(PlayerFull["Main"]["PlayTime"])}`
-		Stats.Stat_Plays.Desc.Text = `Game joins: {PlayerFull["Main"]["Joins"]}`
-		Stats.Stat_Warnings.Desc.Text = `<font color="{PlayerFull["Main"]["ModRecords"]["_Warnings"] >= 2 and "rgb(187, 189, 49)" or "rgb(255,255,255)"}">{PlayerFull["Main"]["ModRecords"]["_Warnings"]} Warnings</font>`
-		Stats.Stat_Warnings.Icon.ImageColor3 = (PlayerFull["Main"]["ModRecords"]["_Warnings"] >= 2 and Color3.fromRGB(187,189, 49) or Color3.new(1,1,1))
-		Stats.Stat_IsAdmin.Desc.Text = `<font color=\"{PlayerFull["Admin"]["IsAdmin"] and "rgb(255,0,0)" or "rgb(255,255,255)"}\">User is {PlayerFull["Admin"]["IsAdmin"] and `protected (admin under Rank {PlayerFull["Admin"]["RankID"]})` or "not protected"}</font>`
+		Stats.FirstSeen.Desc.Text = Utilities.FormatRelativeTime(PlayerFull.Main.FirstSeen)
+		Stats.LastSeen.Desc.Text = PlayerFull.Main.IsActive and "<font color=\"rgb(0,255,0)\">now</font>" or Utilities.FormatRelativeTime(PlayerFull.Main.LastSeen)
+		Stats.PlayTime.Desc.Text = FormatTime(PlayerFull.Main.PlayTime)
+		Stats.Plays.Desc.Text = PlayerFull.Main.Joins
+
+		Stats.IsAdmin.Desc.Text = PlayerFull.Admin.RankName
+		Stats.UserID.Desc.Text = PlayerID
+		Stats.ServerID.Desc.Text = ServerJobID
+		Stats.Region.Desc.Text = PlayerFull.Main.RegionSerialized
+
+		Stats.Warnings.Desc.Text = `<font color="{PlayerFull.Main.ModRecords._Warnings >= 2 and "rgb(187, 189, 49)" or "rgb(255,255,255)"}">{PlayerFull.Main.ModRecords._Warnings} Warnings</font>`
+		Stats.Warnings.Icon.ImageColor3 = (PlayerFull.Main.ModRecords._Warnings >= 2 and Color3.fromRGB(187,189,49) or Color3.new(1,1,1))
 	end
 
-	for _, Obj in {"PlayerImage", "PlayerUN", "PlayerDN", "Stats", "QuickActions"} do
+	for _, Obj in {"PlayerImage", "PlayerUN", "PlayerDN", "Stats", "Logs"} do
 		Shimmers[Obj]:Pause()
 		Shimmers[Obj]:GetFrame():Destroy()
 	end
 
 	for key, Data in PlayerFull["Main"]["ModRecords"]["Actions"] do
-		local Action = PlayerFrame.ModerationHistory.ActionList.Log:Clone()
+		local Action = PlayerFrame.Logs.ActionList.Log:Clone()
 		local ModData = CachePlayer(Data["Moderator"], false, false)
 
 		Action.Parent = PlayerFrame.ModerationHistory.ActionList
 		Action.Visible = true
-		Action.Name = math.random(1,834285348)
+		Action.Name = game:GetService("HttpService"):GenerateGUID(false)
 
 		Action.ActionLabel.Text = `<b>@{ModData["Username"]}</b> {
 			Data["_Type"] == "BAN"        and   `created a ban for {FormatTime(Data["Duration"], true)}` or
@@ -216,21 +218,13 @@ local function LoadPlayer(
 		Action.Icon.Image = 
 			Data["_Type"] == "BAN"        and   "https://www.roblox.com/asset/?id=11284736452" or
 			Data["_Type"] == "WARN"       and   "https://www.roblox.com/asset/?id=17402667535" or
-			-- Data["_Type"] == "NOTE"       and   "0" or
-			-- Data["_Type"] == "LOGS_CLEAR" and   "0" or
+			Data["_Type"] == "NOTE"       and   "0" or
+			Data["_Type"] == "LOGS_CLEAR" and   "0" or
 			Data["_Type"] == "KICK"       and   "https://www.roblox.com/asset/?id=138303173193406" or
 			Data["_Type"] == "TELEPORT"   and   "https://www.roblox.com/asset/?id=84037313964620" or
 			"http://www.roblox.com/asset/?id=15105963940"
 		Action.Player.Image = ModData["Photo"]
 	end
-
-	Shimmers["ModerationHistory"]:Pause()
-	Shimmers["ModerationHistory"]:GetFrame():Destroy()
-
-	--// load chatlogs todotodotodotodo
-
-	Shimmers["AuditLogs"]:Pause()
-	Shimmers["AuditLogs"]:GetFrame():Destroy()
 
 	Connections["BanButton"] = PlayerFrame.QuickActions.ActionList.Ban.Click.MouseButton1Click:Connect(function()
 		PlayerFrame.BanBox.Visible = true
@@ -289,11 +283,11 @@ local function LoadPlayer(
 		end, function(e)
 			PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Failed ("..e..")"
 		end)
-		
+
 		task.delay(5, function()
 			PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Join server"
 		end)
-		
+
 	end)
 
 	local function DoBan(ClearWarns)	
@@ -312,7 +306,7 @@ local function LoadPlayer(
 		end
 
 		local Seconds = ((
-				Sep[2] == "seconds" and 1 or 
+			Sep[2] == "seconds" and 1 or 
 				Sep[2] == "minutes" and 60 or
 				Sep[2] == "hours" and (60 * 60) or
 				Sep[2] == "days" and (60 * 60 * 24) or
@@ -442,7 +436,7 @@ local function LoadPlayer(
 
 		LoadPlayer(PlayerID, ServerJobID)
 	end)
-	
+
 	Connections["NoteButton"] = PlayerFrame.QuickActions.ActionList.SendNote.Click.MouseButton1Click:Connect(function()
 		PlayerFrame.SendMessage.Visible = true
 
@@ -476,13 +470,13 @@ local function LoadPlayer(
 
 		LoadPlayer(PlayerID, ServerJobID)
 	end)
-	
+
 	Connections["FunPrompt"] = PlayerFrame.QuickActions.ActionList.MiscCommands.Click.MouseButton1Click:Connect(function()
 		PlayerFrame.FunCommands.Visible = true	
 	end)
-	
+
 	local ChatLogs = Remotes.ServerComm:InvokeServer("RequestChatlogs")
-	
+
 	Shimmers.ChatLogs:Pause()
 	Shimmers.ChatLogs:GetFrame():Destroy()
 end
@@ -492,45 +486,29 @@ local function InitServers()
 	local CanClick = true
 
 	for i, Server in Servers do
-		--local PlayerData = game:GetService("UserService"):GetUserInfosByUserIdsAsync(Server[2]["P"])
+		print(Server)
+		local Template = ServerDir.Content.Template:Clone()
 
-		local Template = script.Parent.ServerDir.Content.Template:Clone()
-
-		Template.Parent = script.Parent.ServerDir.Content
+		Template.Parent = ServerDir.Content
 		Template.Name = Server[1]
 
 		Template.RankName.Text = `Server {i}`
-		Template.Info.Text = `{FormatTime(Server[2]["CST"] - Server[2]["ST"], true)} uptime · {#Server[2]["P"]} players ({Server[2]["AP"]} in server lifetime) · {Server[2]["CA"]} admins in-game`
-		if #Server[2]["P"] >= 6 then
-			for m = 1, 6 do
-				local PlayerFrame = Template.Members.Template:Clone()
-				local PlayerData = CachePlayer(Server[2]["P"][m], false, true)
-
-				PlayerFrame.Parent = Template.Members --// why is this not replicated?????????
-				PlayerFrame.Player.Text = `@{PlayerData["Username"]}`
-				PlayerFrame.MiscLabel.Text = PlayerData["HasVerifiedBadge"] and utf8.char(0xE000) or ""
-				PlayerFrame.PlayerIcon.Image = PlayerData["Photo"]
-				PlayerFrame.Visible = true
-			end
-
-			local PlayerFrame = Template.Members.Template:Clone()
-
-			PlayerFrame.Parent = Template.Members
-			PlayerFrame.Player.Text = `{#Server[2]["P"] - 6} others...`
-			PlayerFrame.Visible = true
-		else
-			for _, m in Server[2]["P"] do
-				local PlayerFrame = Template.Members.Template:Clone()
-				local PlayerData = CachePlayer(m, false, true)
-
-				PlayerFrame.Parent = Template.Members
-				PlayerFrame.Player.Text = `@{PlayerData["Username"]}`
-				PlayerFrame.MiscLabel.Text = PlayerData["HasVerifiedBadge"] and utf8.char(0xE000) or ""
-				PlayerFrame.PlayerIcon.Image = PlayerData["Photo"]
-				PlayerFrame.Visible = true
-			end
+		Template.Info.Text = `{FormatTime(Server[2]["CST"] - Server[2]["ST"], true)} uptime · {#Server[2]["P"]} CCU · {Server[2]["AP"]} visits · {Server[2]["CA"]} admins in-game`
+		
+		for _, Child in Template.ProfilePictures:GetChildren() do
+			if Child:IsA("ImageLabel") then Child.Visible = false end
 		end
 
+		for i, Player in Server[2]["P"] do
+			local PlayerData = CachePlayer(Player, false, true)
+			local CorrespondingIcon = Template.ProfilePictures [i]
+			
+			if CorrespondingIcon == nil then break end
+			
+			CorrespondingIcon.Image = PlayerData["Photo"]
+			CorrespondingIcon.Visible = true
+		end
+		
 		Template.Visible = true
 		Connections[Server[1]] = Template.Activate.MouseButton1Click:Connect(function()
 			if not CanClick then return end
@@ -544,7 +522,7 @@ local function InitServers()
 			Box.ServerStats.LifetimeAdmins.Text = `Lifetime admins: <b>{Server[2]["AA"]}</b> (currently <b>{Server[2]["CA"]}</b>)`
 			Box.ServerStats.LifetimePlayers.Text = `Lifetime players: <b>{Server[2]["AP"]}</b>`
 			Box.ServerStats.Uptime.Text = `Total uptime: <b>{FormatTime(Server[2]["CST"] - Server[2]["ST"])}</b>`
-			Box.ServerStats.LockedTo.Text = `Open to: <b>{Server[2]["L"] == 1 and "Admins" or Server[2]["L"] == 2 and "Nobody" or "Not locked"}</b>`
+			Box.ServerStats.LockedTo.Text = `Open to: <b>{Server[2]["L"] == 1 and "Admins" or Server[2]["L"] == 2 and "Nobody" or "Everybody"}</b>`
 			Box.ServerStats.GameVersion.Text = `Game version: <b>{Server[2]["PV"]}</b>`
 
 			Connections["ServerExit"] = Box.ServerStats.ZExit.Click.MouseButton1Click:Connect(function()
@@ -563,8 +541,10 @@ local function InitServers()
 				local Template = Box.Members.Template:Clone()
 				local PlayerInfo = CachePlayer(ID, false, true)
 				local ServerPlayerInfo = Remotes.ServerComm:InvokeServer("RequestPlayerJSON", ID)
+				
+				print(ServerPlayerInfo)
 
-				Template.PlayerData.Text = `Current session: 0s · {ServerPlayerInfo["Main"]["Joins"] - 1} historical joins`
+				Template.PlayerData.Text = `Current session: {FormatTime(ServerPlayerInfo["Main"]["LastSeen"] - AdmRemotes.GetSystemClock:InvokeServer())} · {ServerPlayerInfo["Main"]["Joins"]} sessions`
 				Template.Icon.Image = PlayerInfo["Photo"]
 				Template.PlrName.Text = `<b>{PlayerInfo.DisplayName}</b> (@{PlayerInfo.Username})`
 
@@ -583,67 +563,79 @@ local function InitServers()
 	end
 end
 
-script.Parent.PlayerLookup.MainUserDat.Searchbar.Searchbar.TextBox.FocusLost:Connect(function(enter)
-	if not enter then return end
-	local UserID, TB = nil, script.Parent.PlayerLookup.MainUserDat.Searchbar.Searchbar.TextBox
-	
-	if tonumber(TB.Text) == nil then
-		xpcall(function()
-			UserID = game.Players:GetUserIdFromNameAsync(TB.Text)
-		end, function()
-			print("Attempt to load a player which doesnt exist, ignoring")
-			UserID = 0
-			return
-		end)
-	elseif tonumber(TB.Text) ~= nil then
-		UserID = tonumber(TB.Text)
-	else
-		print("Attempt to load a player which doesnt exist, ignoring")
-		UserID = 0
-		return
-	end
-	
-	if UserID == 0 then
-		print("Got kill term, goodbye")
-		return
-	end
-	
-	script.Parent.PlayerLookup.Visible = false
-	
-	LoadPlayer(UserID, 0, script.Parent.Player:GetAttribute("ShouldDelay"))
-end)
+--script.Parent.PlayerLookup.MainUserDat.Searchbar.Searchbar.TextBox.FocusLost:Connect(function(enter)
+--	if not enter then return end
+--	local UserID, TB = nil, script.Parent.PlayerLookup.MainUserDat.Searchbar.Searchbar.TextBox
 
-script.Parent.MenuBar.buttons.AServerDir.TextButton.MouseButton1Click:Connect(function()
-	PlayerFrame.ImageLabel.ImageColor3 = Color3.fromRGB(126, 128, 175)
-	PlayerFrame.PlayerImage.Image = "rbxassetid://15105863258"
-	PlayerFrame.PlayerUN.Text = "Player info has been unloaded to resume server polling. Please reselct or look up the target player."
-	PlayerFrame.PlayerDN.Text = "Nobody"
+--	if tonumber(TB.Text) == nil then
+--		xpcall(function()
+--			UserID = game.Players:GetUserIdFromNameAsync(TB.Text)
+--		end, function()
+--			print("Attempt to load a player which doesnt exist, ignoring")
+--			UserID = 0
+--			return
+--		end)
+--	elseif tonumber(TB.Text) ~= nil then
+--		UserID = tonumber(TB.Text)
+--	else
+--		print("Attempt to load a player which doesnt exist, ignoring")
+--		UserID = 0
+--		return
+--	end
 
-	for i, conn in Connections do conn:Disconnect() end --// idk why it wasnt happen before but ? 
-	Connections = {}
+--	if UserID == 0 then
+--		print("Got kill term, goodbye")
+--		return
+--	end
 
-	PausePolling = false
-	
-	--// force an update
-	
-	for i, ch in script.Parent.ServerDir.Content:GetChildren() do
-		if ch.Name ~= "Template" and ch:IsA("Frame") then ch:Destroy() end
-	end
+--	script.Parent.PlayerLookup.Visible = false
 
-	task.spawn(InitServers)
-end)
+--	LoadPlayer(UserID, 0, script.Parent.Player:GetAttribute("ShouldDelay"))
+--end)
 
 AdmAppAPI.AddAppDrawerButton({
 	--AppName = Utilities.Translate("Apps.MainFrame.Home.Title"),
 	--Description = Utilities.Translate("Apps.MainFrame.Template.Desc"),
-	
+
 	AppName = "Player Management (beta)",
 	Icon = Utilities.Icon "users",
 
-	MainButtonClick = function() end,
-	MainButtonFrame = script.Parent,
+	SubIcons = {
+		{
+			Name = "Directory",
+			Icon = Utilities.Icon "network",
+			Frame = ServerDir,
+			Click = function()
+				PlayerFrame.ImageLabel.ImageColor3 = Color3.fromRGB(126, 128, 175)
+				PlayerFrame.PlayerImage.Image = "rbxassetid://15105863258"
+				PlayerFrame.PlayerUN.Text = "Player info has been unloaded to resume server polling. Please reselct or look up the target player."
+				PlayerFrame.PlayerDN.Text = "Nobody"
 
-	SubIcons = {}
+				for i, conn in Connections do conn:Disconnect() end --// idk why it wasnt happen before but ? 
+				Connections = {}
+
+				PausePolling = false
+
+				--// force an update
+
+				for i, ch in ServerDir.Content:GetChildren() do
+					if ch.Name ~= "Template" and ch:IsA("Frame") then ch:Destroy() end
+				end
+
+				task.spawn(InitServers)
+			end
+		},
+		{
+			Name = "Bulk Moderate",
+			Icon = Utilities.Icon "no-entry",
+			Frame = script.Parent.Ban
+		},
+		{
+			Name = "Player Lookup",
+			Icon = Utilities.Icon "search",
+			Frame = script.Parent.PlayerLookup
+		}
+	}
 })
 
 task.spawn(InitServers)
@@ -651,7 +643,7 @@ task.spawn(InitServers)
 while task.wait(PollInterval) do
 	if PausePolling then continue end
 
-	for i, ch in script.Parent.ServerDir.Content:GetChildren() do
+	for i, ch in ServerDir.Content:GetChildren() do
 		if ch.Name ~= "Template" and ch:IsA("Frame") then ch:Destroy() end
 	end
 

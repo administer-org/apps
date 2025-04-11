@@ -321,7 +321,7 @@ return function(_, _, RuntimeAPI)
 			}
 
 		elseif Message == "BanPlayer" then
-			xpcall(
+			return xpcall(
 				function()
 					TargetDat["ModRecords"]["Actions"][`Ban-{math.random(1,50000)}`] = {
 						["DidClearWarnings"] = Data["ClearWarnings"],
@@ -404,7 +404,7 @@ return function(_, _, RuntimeAPI)
 				end
 			)
 		elseif Message == "KickPlayer" then
-			xpcall(
+			return xpcall(
 				function()
 					TargetDat["ModRecords"]["Actions"][`Kick-{math.random(1,1500000)}`] = {
 						["DidClearWarnings"] = Data["ClearWarnings"],
@@ -460,7 +460,7 @@ return function(_, _, RuntimeAPI)
 				end
 			)
 		elseif Message == "WarnPlayer" then
-			xpcall(
+			return xpcall(
 				function()
 					TargetDat["ModRecords"]["Actions"][`Warning-{math.random(1,50000)}`] = {
 						["Moderator"] = Player.UserId,
@@ -507,7 +507,7 @@ return function(_, _, RuntimeAPI)
 				end
 			)
 		elseif Message == "UnbanPlayer" then
-			xpcall(
+			return xpcall(
 				function()
 					TargetDat["ModRecords"]["Actions"][`Unban-{math.random(1,50000)}`] = {
 						["Moderator"] = Player.UserId,
@@ -561,7 +561,7 @@ return function(_, _, RuntimeAPI)
 				end
 			)
 		elseif Message == "SendNote" then
-			xpcall(
+			return xpcall(
 				function()
 					TargetDat["ModRecords"]["Actions"][`Unban-{math.random(1,50000)}`] = {
 						["Moderator"] = Player.UserId,

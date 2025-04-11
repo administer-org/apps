@@ -252,43 +252,43 @@ local function LoadPlayer(
 		end)
 	end)
 
-	Connections["DoKick"] = PlayerFrame.KickBox.Kick.MouseButton1Click:Connect(function()
-		local Shm = Shimmer.new(PlayerFrame.KickBox.Kick)
-		Shm:Play()
+	--Connections["DoKick"] = PlayerFrame.KickBox.Kick.MouseButton1Click:Connect(function()
+	--	local Shm = Shimmer.new(PlayerFrame.KickBox.Kick)
+	--	Shm:Play()
 
-		print(Remotes.ServerComm:InvokeServer("KickPlayer", {
-			["PrivateNote"] = PlayerFrame.KickBox.LogMessage.Text or "No reason provided.",
-			["KickMsg"] = PlayerFrame.KickBox.KickMessage.Text or `No reason provided.`,
-			["TargetID"] = PlayerID,
-		}))
+	--	print(Remotes.ServerComm:InvokeServer("KickPlayer", {
+	--		["PrivateNote"] = PlayerFrame.KickBox.LogMessage.Text or "No reason provided.",
+	--		["KickMsg"] = PlayerFrame.KickBox.KickMessage.Text or `No reason provided.`,
+	--		["TargetID"] = PlayerID,
+	--	}))
 
-		PlayerFrame.KickBox.Kick.Label.Text = "SUCCESS!"
+	--	PlayerFrame.KickBox.Kick.Label.Text = "SUCCESS!"
 
-		Shm:Pause()
-		Shm:GetFrame():Destroy()
+	--	Shm:Pause()
+	--	Shm:GetFrame():Destroy()
 
-		task.wait(2) --// make sure data is up to date bc message might take a minute to send
-		PlayerFrame.KickBox.Visible = false
-		PlayerFrame.KickBox.Kick.Label.Text = "KICK"
-		LoadPlayer(PlayerID, ServerJobID)
-	end)
+	--	task.wait(2) --// make sure data is up to date bc message might take a minute to send
+	--	PlayerFrame.KickBox.Visible = false
+	--	PlayerFrame.KickBox.Kick.Label.Text = "KICK"
+	--	LoadPlayer(PlayerID, ServerJobID)
+	--end)
 
-	Connections["JoinServer"] = PlayerFrame.QuickActions.ActionList.JoinServer.Click.MouseButton1Click:Connect(function()
-		PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Teleporting..."
-		xpcall(function()
-			if ServerJobID == 0 then
-				PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Unavailable"
-			end
-			game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ServerJobID)
-		end, function(e)
-			PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Failed ("..e..")"
-		end)
+	--Connections["JoinServer"] = PlayerFrame.QuickActions.ActionList.JoinServer.Click.MouseButton1Click:Connect(function()
+	--	PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Teleporting..."
+	--	xpcall(function()
+	--		if ServerJobID == 0 then
+	--			PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Unavailable"
+	--		end
+	--		game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ServerJobID)
+	--	end, function(e)
+	--		PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Failed ("..e..")"
+	--	end)
 
-		task.delay(5, function()
-			PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Join server"
-		end)
+	--	task.delay(5, function()
+	--		PlayerFrame.QuickActions.ActionList.JoinServer.Icon.Desc.Text = "Join server"
+	--	end)
 
-	end)
+	--end)
 
 	local function DoBan(ClearWarns)	
 		local Shm = Shimmer.new(ClearWarns and PlayerFrame.BanBox.BanClear or PlayerFrame.BanBox.BanKeep)
@@ -354,16 +354,8 @@ local function LoadPlayer(
 		LoadPlayer(PlayerID, ServerJobID)
 	end
 
-	Connections["BanClearWarns"] = PlayerFrame.BanBox.BanClear.MouseButton1Click:Connect(function()
-		DoBan(true)
-	end)
-
-	Connections["BanNoClear"] = PlayerFrame.BanBox.BanKeep.MouseButton1Click:Connect(function()
-		DoBan(false)
-	end)
-
 	if PlayerFull["Main"]["ModRecords"]["ActiveBan"] then
-		Stats.Stat_Status.Desc.Text = `Banned for {PlayerFull["Main"]["ModRecords"]["CurrentBanDuration"] / 60 / 24} days`
+		Stats.BanStatus.Desc.Text = `Suspended for {PlayerFull["Main"]["ModRecords"]["CurrentBanDuration"] / 60 / 24} days`
 		PlayerFrame.QuickActions.ActionList.Ban.Icon.Desc.Text = "Unban"
 		Connections["BanButton"]:Disconnect()
 
@@ -399,42 +391,96 @@ local function LoadPlayer(
 
 			LoadPlayer(PlayerID, ServerJobID)
 		end)
+
+		Frontend.Popup.new(
+			{
+				Name = "Player Management (beta)",
+				Icon = Utilities.Icon "users",
+			},
+			{
+				Primary = PlayerBasic.Photo,
+				SubIcon = Utilities.Icon "warning-triangle"
+			},
+
+			`Unban @{PlayerBasic.Username}`,
+			"Are you sure you would like to end this players ban early? They will be able to join the game normally again.",
+			{
+				{
+					Text = "Yes",
+					Icon = Utilities.Icon "warning-filled",
+					Callback = function(Close, Text)
+						print(Remotes.ServerComm:InvokeServer("UnbanPlayer", {
+							TargetID = PlayerID,
+							AuditLogMessage = Text[1] 
+						}))
+
+						Close()
+						LoadPlayer(PlayerID, ServerJobID)
+					end
+				},
+				{
+					Text = "No",
+					Icon = Utilities.Icon "x",
+					Callback = function(Close)
+						Close()
+					end
+				}
+			},
+			{
+				{
+					HeaderText = "Reason"
+				}
+			}
+		)
 	else
-		Stats.Stat_Status.Desc.Text = `Not currently banned`
+		Stats.BanStatus.Desc.Text = `Not suspended`
 	end
 
-	Connections["WarnButton"] = PlayerFrame.QuickActions.ActionList.WriteWarning.Click.MouseButton1Click:Connect(function()
-		PlayerFrame.WarnBox.Visible = true
+	Connections["Warn"] = PlayerFrame.QuickActions.ActionList.Warn.Click.MouseButton1Click:Connect(function() 
+		Frontend.Popup.new(
+			{
+				Name = "Player Management (beta)",
+				Subheader = "Create warning",
+				Icon = Utilities.Icon "users"
+			},
+			{
+				Primary = PlayerBasic.Photo,
+				SubIcon = Utilities.Icon "warning-triangle"
+			},
 
-		PlayerFrame.WarnBox.MiscMeta.Text = `@{PlayerBasic["Username"]} • {PlayerID}`
-		PlayerFrame.WarnBox.TopEffect.PlayerImage.Image = PlayerBasic["Photo"]
-		PlayerFrame.WarnBox.Header.Text = `Warn {PlayerBasic["DisplayName"]}`
-		PlayerFrame.WarnBox.HeaderContainer.HeaderLabel.Text = `Warn @{PlayerBasic["Username"]}`
+			`Warn @{PlayerBasic.Username}?`,
+			"Are you sure you would like to file a warning for this player?",
+			{
+				{
+					Text = "Yes",
+					Icon = Utilities.Icon "warning-filled",
+					Callback = function(Close, Text)
+						print(Remotes.ServerComm:InvokeServer("WarnPlayer", {
+							TargetID = PlayerID,
+							Warning = Text[1]
+						}))
 
-		Connections["WarnClose"] = PlayerFrame.WarnBox.HeaderContainer.Exit.MouseButton1Click:Connect(function()
-			PlayerFrame.WarnBox.Visible = false
-		end)
-	end)
-
-	Connections["WarnSend"] = PlayerFrame.WarnBox.Send.MouseButton1Click:Connect(function()
-		local Shm = Shimmer.new(PlayerFrame.WarnBox.Send)
-		Shm:Play()
-
-		print(Remotes.ServerComm:InvokeServer("WarnPlayer", {
-			["TargetID"] = PlayerID,
-			["Warning"] = PlayerFrame.WarnBox.Warning.Text
-		}))
-
-		PlayerFrame.WarnBox.Send.Label.Text = "SUCCESS!"
-
-		Shm:Pause()
-		Shm:GetFrame():Destroy()
-
-		task.wait(2)
-		PlayerFrame.WarnBox.Visible = false
-		PlayerFrame.WarnBox.Send.Label.Text = "DONE"
-
-		LoadPlayer(PlayerID, ServerJobID)
+						Close()
+						LoadPlayer(PlayerID, ServerJobID)
+					end
+				},
+				{
+					Text = "No",
+					Icon = Utilities.Icon "x",
+					Callback = function(Close)
+						Close()
+					end
+				}
+			},
+			{
+				{
+					HeaderText = "Warning Text"
+				},
+				{
+					HeaderText = "Log Reason"
+				}
+			}
+		) 
 	end)
 
 	Connections["NoteButton"] = PlayerFrame.QuickActions.ActionList.SendNote.Click.MouseButton1Click:Connect(function()
@@ -494,7 +540,7 @@ local function InitServers()
 
 		Template.RankName.Text = `Server {i}`
 		Template.Info.Text = `{FormatTime(Server[2]["CST"] - Server[2]["ST"], true)} uptime · {#Server[2]["P"]} CCU · {Server[2]["AP"]} visits · {Server[2]["CA"]} admins in-game`
-		
+
 		for _, Child in Template.ProfilePictures:GetChildren() do
 			if Child:IsA("ImageLabel") then Child.Visible = false end
 		end
@@ -502,13 +548,13 @@ local function InitServers()
 		for i, Player in Server[2]["P"] do
 			local PlayerData = CachePlayer(Player, false, true)
 			local CorrespondingIcon = Template.ProfilePictures [i]
-			
+
 			if CorrespondingIcon == nil then break end
-			
+
 			CorrespondingIcon.Image = PlayerData["Photo"]
 			CorrespondingIcon.Visible = true
 		end
-		
+
 		Template.Visible = true
 		Connections[Server[1]] = Template.Activate.MouseButton1Click:Connect(function()
 			if not CanClick then return end
@@ -541,7 +587,7 @@ local function InitServers()
 				local Template = Box.Members.Template:Clone()
 				local PlayerInfo = CachePlayer(ID, false, true)
 				local ServerPlayerInfo = Remotes.ServerComm:InvokeServer("RequestPlayerJSON", ID)
-				
+
 				print(ServerPlayerInfo)
 
 				Template.PlayerData.Text = `Current session: {FormatTime(ServerPlayerInfo["Main"]["LastSeen"] - AdmRemotes.GetSystemClock:InvokeServer())} · {ServerPlayerInfo["Main"]["Joins"]} sessions`

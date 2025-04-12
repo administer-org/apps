@@ -652,11 +652,6 @@ AdmAppAPI.AddAppDrawerButton({
 			Icon = Utilities.Icon "network",
 			Frame = ServerDir,
 			Click = function()
-				PlayerFrame.ImageLabel.ImageColor3 = Color3.fromRGB(126, 128, 175)
-				PlayerFrame.PlayerImage.Image = "rbxassetid://15105863258"
-				PlayerFrame.PlayerUN.Text = "Player info has been unloaded to resume server polling. Please reselct or look up the target player."
-				PlayerFrame.PlayerDN.Text = "Nobody"
-
 				for i, conn in Connections do conn:Disconnect() end --// idk why it wasnt happen before but ? 
 				Connections = {}
 

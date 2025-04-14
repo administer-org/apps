@@ -1,7 +1,5 @@
 --// pyxfluff 2024 - 2025
 
---// Rewrite soon!
-
 --// Modules
 local ServerIndex = require(script.Parent.Modules.ServerIndex)
 
@@ -14,27 +12,31 @@ local TextService = game:GetService("TextService")
 local PlayerStore = DataStoreService:GetDataStore("AdministerPM_PlayerStore")
 
 --// Variables
-local RefreshDuration = 15 --// You may want to tweak this based on the 1000 + 100(players) rate limit. Do NOT make higher than 60.
+local RefreshDuration = 10 --// How often new data gets sent to the archive
 local AllTimePlayers = 0
-local AllTimeAdmins = 0
 local CurrentAdmins = 0
 local ChatMessages = {}
+
 local SLock = 0 --// 0 = unlocked, 1 = admins, 2 = everyone
 local SLockMessage = ""
+local SLockActor = ""
+
 local DefaultData = {
-	["Joins"] = 0,
-	["PlayTime"] = 0,
-	["FirstSeen"] = 0,
-	["LastSeen"] = 0,
-	["IsActive"] = true,
-	["ModRecords"] = {
-		["_Warnings"] = 0,
-		["_Bans"] = 0,
-		["Actions"] = {
+	Joins = 0,
+	PlayTime = 0,
+	FirstSeen = 0,
+	LastSeen = 0,
+	IsActive = true,
+	
+	ModRecords = {
+		_Warnings = 0,
+		_Bans = 0,
+		Actions = {
 
 		}
 	},
-	["AuditableActions"] = {
+	
+	AuditableActions = {
 
 	}
 }
@@ -48,21 +50,16 @@ local IsAdmin
 local function RefreshTask()
 	ServerIndex.UploadToIndex({
 		["AP"] = AllTimePlayers,
-		["AA"] = AllTimeAdmins,
-		["CA"] = CurrentAdmins,
-		["AI"] = AdminIDs
+		["CA"] = CurrentAdmins
 	})
 
 	while task.wait(RefreshDuration) do
 		xpcall(function()
 			ServerIndex.UploadToIndex({
 				["AP"] = AllTimePlayers,
-				["AA"] = AllTimeAdmins,
-				["CA"] = CurrentAdmins,
-				["AI"] = AdminIDs,
+				["CA"] = CurrentAdmins
 				--["GameErrorCount"] = 0,
 				--["GameWarningCount"] = 0
-				["SR"] = "US"
 			})
 		end, function(p)
 			warn(`Failed to refresh our server for this frame: {p}`)
@@ -119,7 +116,7 @@ end
 local function WebhookPost(Data)
 	--// TODO
 	game:GetService("HttpService"):PostAsync(
-		"",
+		"https://discord.com/api/webhooks/1360730603204513864/XouuUtCY7_JhS1NhEbK-cyitBsQkZmfVPifrzZi2vmJ5ZaC2R_2wMpRctkLsDG4BtjNo",
 		game:GetService("HttpService"):JSONEncode({
 			["embeds"] = {{
 				["color"] = tonumber(`0x{Data["Color"]}`, 16),
@@ -137,11 +134,11 @@ local function InitPlayer(Player: Player)
 	repeat task.wait() until Player.UserId
 	local PlayerInfo = PlayerStore:GetAsync(Player.UserId) or Clone(DefaultData) 
 
-	if SLock == 2 then
-		Player:Kick(`This server is locked. Try rejoining later.\n\n{SLockMessage}`)
-	elseif SLock == 1 then
-		if not IsAdmin(Player) then
-			Player:Kick(`This server is locked to admins only. Try rejoining later.\n\n{SLockMessage}`)
+	if SLock == "2" then
+		Player:Kick(`This server was locked by {SLockActor}. Try rejoining later.\n\n{SLockMessage}`)
+	elseif SLock == "1" then
+		if not IsAdmin(Player).IsAdmin then
+			Player:Kick(`This server is locked to admins only by {SLockActor}. Try rejoining later.\n\n{SLockMessage}`)
 		end
 	end
 
@@ -153,7 +150,6 @@ local function InitPlayer(Player: Player)
 	PlayerInfo["IsActive"] = true
 	PlayerInfo["Joins"] += 1
 	PlayerInfo["RegionSerialized"] = game:GetService("LocalizationService"):GetCountryRegionForPlayerAsync(Player)
-	PlayerInfo["_AdministerSaveData"] = true
 
 	Players[Player.UserId] = {
 		JoinTime = os.time(),
@@ -162,16 +158,8 @@ local function InitPlayer(Player: Player)
 		PlrInstance = Player
 	}
 
-	PlayerStore:SetAsync(Player.UserId, PlayerInfo, {Player.UserId})
+	PlayerStore:SetAsync(Player.UserId, PlayerInfo, { Player.UserId })
 	AllTimePlayers += 1
-
-	Player.Chatted:Connect(function(Message)
-		local Success, FilteredMessage = pcall(function()
-			return TextService:FilterStringAsync(Message, Player.UserId):GetNonChatStringForBroadcastAsync()
-		end)
-
-		table.insert(Players[Player.UserId]["Messages"], FilteredMessage)
-	end)
 
 	if PlayerInfo["ModRecords"]["ActiveBan"] then
 		task.delay(2, function()
@@ -190,77 +178,56 @@ local function InitPlayer(Player: Player)
 end
 
 local function ForceInitPlayerByID(UserID: number)
-	local PlayerInfo = PlayerStore:GetAsync(UserID) or DefaultData
+	local PlayerInfo = PlayerStore:GetAsync(UserID) or Clone(DefaultData)
 
 	print("init", PlayerInfo)
 
-	PlayerInfo["LastSeen"] = 0
 	PlayerInfo["IsActive"] = false
-	PlayerInfo["Joins"] += 1
 
 	PlayerStore:SetAsync(UserID, PlayerInfo, {UserID})
 end
-return function(_, _, RuntimeAPI)
 
-	local function MessageSocket(M)
-		local Data = M.Data
+local function ConnectToSocket(M)
+	local Data = M.Data
 
-		if Data["Action"] == "UploadChatLogs" then
-			if not Players[Data.ID] then
-				--// This request is not for us
-				return
-			end
+	print("Got event", Data)
 
-			print(Players[Data.ID].Messages)
-		elseif Data["Action"] == "KickPlayer" then
-			if not Players[Data.TargetID] then return end
+	if Data["Action"] == "KickPlayer" then
+		if not Players[Data.TargetID] then return end
 
-			Players[Data.TargetID].PlrInstance:Kick(`\n[Administer]\n\nKicked by {Data["AdminName"]}:\n{Data["KickMessage"]}`)
-		elseif Data["Action"] == "PlayerNote" then
-			if not Players[Data.TargetID] then return end
+		Players[Data.TargetID].PlrInstance:Kick(`Kicked by {Data["AdminName"]}:\n{Data["KickMessage"]}\n\nPowered by Administer`)
+	elseif Data["Action"] == "PlayerNote" then
+		if not Players[Data.TargetID] then return end
 
-			local NewUI = script.Parent.UI.Message:Clone()
-			local AdminDat = CachePlayer(Data["AdminID"], false, false)
+		local NewUI = script.Parent.UI.Message:Clone()
+		local AdminDat = CachePlayer(Data["AdminID"], false, false)
 
-			NewUI.Parent = Players[Data.TargetID].PlrInstance.PlayerGui
-			NewUI.CanvasGroup.MainNote.Notice.Text = `<i>{Data["Message"]}</i>`
-			NewUI.CanvasGroup.MainNote.UserMeta.Text = `<b>{AdminDat["DisplayName"]}</b> (@{AdminDat["Username"]}) • Now`
-			NewUI.CanvasGroup.MainNote.Icon.Image = AdminDat.Photo
+		NewUI.Parent = Players[Data.TargetID].PlrInstance.PlayerGui
+		NewUI.CanvasGroup.MainNote.Notice.Text = `<i>{Data["Message"]}</i>`
+		NewUI.CanvasGroup.MainNote.UserMeta.Text = `<b>{AdminDat["DisplayName"]}</b> (@{AdminDat["Username"]}) • Now`
+		NewUI.CanvasGroup.MainNote.Icon.Image = AdminDat.Photo
 
-			NewUI.CanvasGroup.LocalScript.Enabled = true
+		NewUI.CanvasGroup.LocalScript.Enabled = true
 
-		elseif Data["Action"] == "FunCommand" then
-			if not Players[Data.TargetID] then return end
-			if Data["Action"] then
-				if Data["Action"] == "shirt" then
-				elseif Data["Action"] == "pants" then
-				elseif Data["Action"] == "hat" then
-				elseif Data["Action"] == "face" then
-				elseif Data["Action"] == "invisible" then
-				elseif Data["Action"] == "visible" then
-				elseif Data["Action"] == "walkspeed" then
-				elseif Data["Action"] == "jumppower" then
-				elseif Data["Action"] == "freeze" then
-				elseif Data["Action"] == "forcefield" then
-				elseif Data["Action"] == "size" then
-				elseif Data["Action"] == "health" then
-				elseif Data["Action"] == "heal" then
-				elseif Data["Action"] == "god" then
-				elseif Data["Action"] == "damage" then
-				elseif Data["Action"] == "kill" then
-				elseif Data["Action"] == "control" then
-				elseif Data["Action"] == "sword" then
-				elseif Data["Action"] == "name" then
+	elseif Data.Action == "ShutdownServer" then
+		if Data.JobID ~= game.JobId then return end
 
-				end
-			end
+		for _, Player: Player in game.Players:GetPlayers() do
+			Player:Kick(`This server has been shutdown by {Data.AdminName}:\n{Data.PubReason}\n\nPowered by Administer`)
 		end
+
+	elseif Data.Action == "ChangeAccessLevel" then
+		print(Data.Level)
+		SLock = Data.Level
+		SLockMessage = Data.PubReason
+		SLockActor = Data.AdminName
 	end
+end
 
-	local MainMessageSocket = MessagingService:SubscribeAsync("Administer-PlayerManagement", MessageSocket)
+return function(_, _, RuntimeAPI)
+	local MainMessageSocket = MessagingService:SubscribeAsync("Administer-PlayerManagement", ConnectToSocket)
 
-
-	local function CommunicateWithClient(Player, Message, Data)
+	local function ClientMessagePort(Player, Message, Data)
 		local ST = tick()
 		local TargetDat
 		local AdminDat = PlayerStore:GetAsync(Player.UserId)
@@ -300,7 +267,10 @@ return function(_, _, RuntimeAPI)
 			end)
 
 			if MainDat then
-				return {["Main"] = MainDat, ["Admin"] = {}}
+				return {
+					Main = MainDat,
+					Admin = IsAdmin({ UserID = Data.ID })
+				}
 			else
 				if not Data["Force"] then 
 					return {["Message"] = "This user does not exist. Hit enter to force load this player (results in incorrect data!)"}
@@ -308,7 +278,7 @@ return function(_, _, RuntimeAPI)
 
 				ForceInitPlayerByID(Data["ID"])
 
-				return CommunicateWithClient(Player, Message, Data)
+				return ClientMessagePort(Player, Message, Data)
 			end
 
 		elseif Message == "RequestPlayerJSON" then
@@ -494,7 +464,7 @@ return function(_, _, RuntimeAPI)
 				end,
 
 				function(E)
-					warn(`Failed to unban: {E}`)
+					warn(`Failed to warn: {E}`)
 
 					WebhookPost({
 						["Color"] = "ff000",
@@ -620,11 +590,94 @@ return function(_, _, RuntimeAPI)
 
 
 		elseif Message == "LockServer" then
+			return xpcall(
+				function()
+					table.insert(AdminDat.AuditableActions, {
+						["App"] = {
+							["Name"] = "Player Management",
+							["Icon"] = ""
+						},
+						["Action"] = `Locked a server down with reason: {Data.PrivReason}`,
+						["Icon"] = "",
+						["Timestamp"] = os.time()
+					})
 
+					PlayerStore:SetAsync(Player.UserId, AdminDat)
+					MessagingService:PublishAsync("Administer-PlayerManagement", {
+						Action      = "ChangeAccessLevel",
+						JobID       = Data.JobID,
+						Level       = Data.AccessLevel, 
+						AdminName   = Player.Name,
+						PubReason   = Data.PubReason
+					})
 
-		elseif Message == "CloseServer" then
+					WebhookPost({
+						["Color"] = "ff000",
+						["Title"] = `{Player.Name} changed a server's access level!`,
+						["Body"] = `Data: \n\`\`\`json\n{game:GetService("HttpService"):JSONEncode(Data)}\n\`\`\``,
+						["Footer"] = `Successfully processed in {tick() - ST}s`
+					})
 
+					return {true, "Success!", os.time() - ST}
+				end,
+				function(E)
+					warn(`Failed to execute: {E}`)
 
+					WebhookPost({
+						["Color"] = "ff000",
+						["Title"] = `(fault) {Player.Name} failed to change a servers access level!`,
+						["Body"] = `If this isn't a misconfiguration or Roblox API issue, please report it to Administer. Error: {E}`,
+						["Footer"] = `Successfully Processed in {tick() - ST}s`
+					})
+
+					return {false, E, os.time() - ST}
+				end
+			)
+		elseif Message == "ShutdownServer" then
+			return xpcall(
+				function()
+					table.insert(AdminDat.AuditableActions, {
+						["App"] = {
+							["Name"] = "Player Management",
+							["Icon"] = ""
+						},
+						["Action"] = `Shut a server down with reason: {Data.PrivReason}`,
+						["Icon"] = "",
+						["Timestamp"] = os.time()
+					})
+
+					PlayerStore:SetAsync(Player.UserId, AdminDat)
+
+					MessagingService:PublishAsync("Administer-PlayerManagement", {
+						Action    = "ShutdownServer",
+						JobID     = Data.JobID,
+						AdminID   = Player.UserId,
+						AdminName = Player.Name,
+						PubReason = Data.PubReason
+					})
+
+					WebhookPost({
+						["Color"] = "ff000",
+						["Title"] = `{Player.Name} shut down a server!`,
+						["Body"] = `Data: \n\`\`\`json\n{game:GetService("HttpService"):JSONEncode(Data)}\n\`\`\``,
+						["Footer"] = `Successfully processed in {tick() - ST}s`
+					})
+
+					return {true, "Success!", os.time() - ST}
+				end,
+				function(E)
+					warn(`Failed to execute: {E}`)
+
+					WebhookPost({
+						["Color"] = "ff000",
+						["Title"] = `(fault) {Player.Name} failed to shutdown a server!`,
+						["Body"] = `If this isn't a misconfiguration or Roblox API issue, please report it to Administer. Error: {E}`,
+						["Footer"] = `Successfully Processed in {tick() - ST}s`
+					})
+
+					return {false, E, os.time() - ST}
+				end
+			)
 		elseif Message == "SendCommand" then
 
 
@@ -639,7 +692,7 @@ return function(_, _, RuntimeAPI)
 
 	--// Remotes
 	RuntimeAPI.Modules.Utilities.NewRemote("RemoteFunction", "ServerComm", true, function(Player, ...)
-		return CommunicateWithClient(Player, ...)
+		return ClientMessagePort(Player, ...)
 	end, "PlayerManagement")
 
 	RuntimeAPI.Modules.Utilities.NewRemote("RemoteFunction", "PerformClientAction", true, function(Player, ...)
@@ -654,19 +707,12 @@ return function(_, _, RuntimeAPI)
 	game.Players.PlayerRemoving:Connect(function(Player)
 		local Info = Players[Player.UserId]
 		local DSInfo = PlayerStore:GetAsync(Player.UserId)
-		local ShouldSave = DSInfo["_AdministerSaveData"]
 
-		if not ShouldSave then 
-			print("Ignoring request to save...")
-			return 
-		end
+		DSInfo["LastSeen"] = os.time()
+		DSInfo["PlayTime"] = DSInfo["PlayTime"] + (os.time() - Info["JoinTime"])
+		DSInfo["IsActive"] = false
 
-		Info["DS"]["LastSeen"] = os.time()
-		Info["DS"]["PlayTime"] = Info["DS"]["PlayTime"] + (os.time() - Info["JoinTime"])
-		Info["DS"]["IsActive"] = false
-		Info["DS"]["ModRecords"] = DSInfo["ModRecords"]
-
-		PlayerStore:SetAsync(Player.UserId, Info["DS"], {Player.UserId})
+		PlayerStore:SetAsync(Player.UserId, DSInfo, { Player.UserId })
 	end)
 
 	for i, Player in game.Players:GetPlayers() do

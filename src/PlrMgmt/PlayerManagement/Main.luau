@@ -217,6 +217,8 @@ local function ConnectToSocket(M)
 		end
 
 	elseif Data.Action == "ChangeAccessLevel" then
+		if Data.JobID ~= game.JobId then return end
+		
 		print(Data.Level)
 		SLock = Data.Level
 		SLockMessage = Data.PubReason

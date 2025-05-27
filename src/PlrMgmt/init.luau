@@ -6,7 +6,7 @@ return function(InvokeAPI: Types.InvocationAPI, a)
 	local RichConfig = InvokeAPI.RichConfig()
 
 	RichConfig.AppMeta.Name = "Player Management"
-	RichConfig.AppMeta.Description = "Manage your game's players with ease.\n\nADMINISTER 2.0 API TESTING, ROUGH EDGES EVERYWHERE"
+	RichConfig.AppMeta.Description = "Manage your game's players from anywhere!"
 	RichConfig.AppMeta.Icon = require(game.ServerScriptService.Administer.Loader.Core.Icons).users
 	RichConfig.AppMeta.Copyright = "2024 - 2025 pyxfluff"
 	RichConfig.AppMeta.Version = "2.0.0"
